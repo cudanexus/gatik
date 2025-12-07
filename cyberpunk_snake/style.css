@@ -1,0 +1,197 @@
+:root {
+    --bg-color: #050510;
+    --grid-line: #0a0a20;
+    --neon-green: #0f0;
+    --neon-pink: #f0f;
+    --neon-cyan: #0ff;
+    --neon-yellow: #ff0;
+    --text-glow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan);
+    --box-glow: 0 0 15px rgba(0, 255, 255, 0.3);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--neon-cyan);
+    font-family: 'Share Tech Mono', monospace;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Scanlines Effect */
+.scanlines {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0),
+        rgba(255,255,255,0) 50%,
+        rgba(0,0,0,0.2) 50%,
+        rgba(0,0,0,0.2)
+    );
+    background-size: 100% 4px;
+    pointer-events: none;
+    z-index: 10;
+    animation: scrollScanlines 10s linear infinite;
+}
+
+@keyframes scrollScanlines {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 100%; }
+}
+
+.game-container {
+    position: relative;
+    z-index: 5;
+    text-align: center;
+    border: 1px solid var(--neon-cyan);
+    padding: 20px;
+    background: rgba(0, 10, 20, 0.8);
+    box-shadow: var(--box-glow);
+    backdrop-filter: blur(5px);
+}
+
+.ui-header {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10px;
+}
+
+h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.5rem;
+    text-transform: uppercase;
+    color: var(--neon-pink);
+    text-shadow: 0 0 10px var(--neon-pink);
+    margin: 0;
+}
+
+.score-board {
+    font-size: 1.5rem;
+    color: var(--neon-green);
+    text-shadow: 0 0 5px var(--neon-green);
+}
+
+.canvas-wrapper {
+    position: relative;
+    border: 2px solid var(--neon-cyan);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+    display: inline-block;
+}
+
+canvas {
+    display: block;
+    background-color: #000;
+    background-image: 
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: var(--neon-green);
+}
+
+.overlay.hidden {
+    display: none;
+}
+
+.overlay h2 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2rem;
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px var(--neon-green);
+}
+
+.key-highlight {
+    color: var(--neon-yellow);
+    border: 1px solid var(--neon-yellow);
+    padding: 2px 6px;
+    border-radius: 4px;
+    box-shadow: 0 0 5px var(--neon-yellow);
+}
+
+.controls-hint {
+    margin-top: 15px;
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+/* Animations */
+.blink {
+    animation: blinker 1s linear infinite;
+}
+
+@keyframes blinker {
+    50% { opacity: 0; }
+}
+
+.glitch {
+    position: relative;
+}
+
+.glitch::before,
+.glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.glitch::before {
+    left: 2px;
+    text-shadow: -1px 0 red;
+    clip: rect(44px, 450px, 56px, 0);
+    animation: glitch-anim-1 5s infinite linear alternate-reverse;
+}
+
+.glitch::after {
+    left: -2px;
+    text-shadow: -1px 0 blue;
+    clip: rect(44px, 450px, 56px, 0);
+    animation: glitch-anim-2 5s infinite linear alternate-reverse;
+}
+
+@keyframes glitch-anim-1 {
+    0% { clip: rect(20px, 9999px, 10px, 0); }
+    20% { clip: rect(50px, 9999px, 60px, 0); }
+    40% { clip: rect(10px, 9999px, 80px, 0); }
+    60% { clip: rect(80px, 9999px, 20px, 0); }
+    80% { clip: rect(30px, 9999px, 40px, 0); }
+    100% { clip: rect(60px, 9999px, 10px, 0); }
+}
+
+@keyframes glitch-anim-2 {
+    0% { clip: rect(60px, 9999px, 10px, 0); }
+    20% { clip: rect(30px, 9999px, 40px, 0); }
+    40% { clip: rect(80px, 9999px, 20px, 0); }
+    60% { clip: rect(10px, 9999px, 80px, 0); }
+    80% { clip: rect(50px, 9999px, 60px, 0); }
+    100% { clip: rect(20px, 9999px, 10px, 0); }
+}

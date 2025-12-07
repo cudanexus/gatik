@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON SNAKE: CYBERPUNK EDITION</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="scanlines"></div>
+    <div class="game-container">
+        <div class="ui-header">
+            <h1 class="glitch" data-text="NEON SNAKE">NEON SNAKE</h1>
+            <div class="score-board">SCORE: <span id="score">000</span></div>
+        </div>
+        
+        <div class="canvas-wrapper">
+            <canvas id="gameCanvas" width="600" height="400"></canvas>
+            <div id="overlay" class="overlay">
+                <h2 class="blink">SYSTEM READY</h2>
+                <p>PRESS <span class="key-highlight">SPACE</span> TO INITIATE</p>
+            </div>
+        </div>
+
+        <div class="controls-hint">
+            USE <span class="key-highlight">ARROWS</span> TO NAVIGATE
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
