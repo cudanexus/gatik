@@ -16,6 +16,8 @@ const COLOR_SNAKE_HEAD = '#0ff';
 const COLOR_SNAKE_BODY = '#008888';
 const COLOR_FOOD = '#f0f';
 const COLOR_PARTICLE = '#ff0';
+const COLOR_DRAGON = '#ff3300';
+const COLOR_DRAGON_EYE = '#ffff00';
 
 // Game State
 let snake = [];
@@ -26,6 +28,7 @@ let score = 0;
 let gameLoopId = null;
 let isGameRunning = false;
 let particles = [];
+let dragons = [];
 
 // Audio Context (for simple synth sounds)
 const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -37,10 +40,10 @@ function playSound(type) {
     }
     const oscillator = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
-    
+
     oscillator.connect(gainNode);
     gainNode.connect(audioCtx.destination);
-    
+
     if (type === 'eat') {
         oscillator.type = 'square';
         oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
@@ -57,6 +60,14 @@ function playSound(type) {
         gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.3);
+    } else if (type === 'dragon_spawn') {
+        oscillator.type = 'triangle';
+        oscillator.frequency.setValueAtTime(100, audioCtx.currentTime);
+        oscillator.frequency.linearRampToValueAtTime(300, audioCtx.currentTime + 0.5);
+        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.5);
     }
 }
 
@@ -85,9 +96,92 @@ class Particle {
     }
 }
 
+// Dragon Class
+class Dragon {
+    constructor() {
+        this.segments = [];
+        this.length = 3;
+        this.moveTimer = 0;
+        this.moveInterval = 2; // Move every 2 frames (slower than snake)
+        this.spawn();
+    }
+
+    spawn() {
+        // Find a spot away from the snake head
+        let valid = false;
+        let x, y;
+        while (!valid) {
+            x = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
+            y = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
+
+            // Simple check to be at least 5 tiles away from snake head
+            const dist = Math.abs(x - snake[0].x) + Math.abs(y - snake[0].y);
+            if (dist > 5) valid = true;
+        }
+
+        for (let i = 0; i < this.length; i++) {
+            this.segments.push({ x: x, y: y + i });
+        }
+    }
+
+    update() {
+        this.moveTimer++;
+        if (this.moveTimer < this.moveInterval) return;
+        this.moveTimer = 0;
+
+        // Simple AI: Move randomly but try to stay in bounds
+        const head = this.segments[0];
+        const moves = [
+            { x: 0, y: -1 },
+            { x: 0, y: 1 },
+            { x: -1, y: 0 },
+            { x: 1, y: 0 }
+        ];
+
+        // Filter valid moves (in bounds)
+        const validMoves = moves.filter(m => {
+            const nx = head.x + m.x;
+            const ny = head.y + m.y;
+            return nx >= 0 && nx < GRID_WIDTH && ny >= 0 && ny < GRID_HEIGHT;
+        });
+
+        if (validMoves.length > 0) {
+            const move = validMoves[Math.floor(Math.random() * validMoves.length)];
+            const newHead = { x: head.x + move.x, y: head.y + move.y };
+
+            this.segments.unshift(newHead);
+            this.segments.pop();
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = COLOR_DRAGON;
+        ctx.shadowColor = COLOR_DRAGON;
+        ctx.shadowBlur = 10;
+
+        this.segments.forEach((seg, i) => {
+            ctx.fillRect(
+                seg.x * TILE_SIZE + 1,
+                seg.y * TILE_SIZE + 1,
+                TILE_SIZE - 2,
+                TILE_SIZE - 2
+            );
+
+            // Draw eyes on head
+            if (i === 0) {
+                ctx.fillStyle = COLOR_DRAGON_EYE;
+                ctx.fillRect(seg.x * TILE_SIZE + 4, seg.y * TILE_SIZE + 4, 4, 4);
+                ctx.fillRect(seg.x * TILE_SIZE + 12, seg.y * TILE_SIZE + 4, 4, 4);
+                ctx.fillStyle = COLOR_DRAGON; // Reset
+            }
+        });
+        ctx.shadowBlur = 0;
+    }
+}
+
 function createExplosion(x, y) {
     for (let i = 0; i < 10; i++) {
-        particles.push(new Particle(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2));
+        particles.push(new Particle(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2));
     }
 }
 
@@ -103,12 +197,13 @@ function initGame() {
     scoreElement.textContent = score.toString().padStart(3, '0');
     placeFood();
     particles = [];
+    dragons = [];
     isGameRunning = true;
     overlay.classList.add('hidden');
-    
+
     if (gameLoopId) clearInterval(gameLoopId);
     gameLoopId = setInterval(gameLoop, GAME_SPEED);
-    
+
     // Start animation loop for particles
     requestAnimationFrame(renderLoop);
 }
@@ -118,8 +213,9 @@ function placeFood() {
     while (!validPosition) {
         food.x = Math.floor(Math.random() * GRID_WIDTH);
         food.y = Math.floor(Math.random() * GRID_HEIGHT);
-        
-        validPosition = !snake.some(segment => segment.x === food.x && segment.y === food.y);
+
+        validPosition = !snake.some(segment => segment.x === food.x && segment.y === food.y) &&
+            !dragons.some(d => d.segments.some(s => s.x === food.x && s.y === food.y));
     }
 }
 
@@ -131,7 +227,7 @@ function handleInput(e) {
         return;
     }
 
-    switch(e.code) {
+    switch (e.code) {
         case 'ArrowUp':
             if (direction.y === 0) nextDirection = { x: 0, y: -1 };
             break;
@@ -169,6 +265,12 @@ function update() {
         return;
     }
 
+    // Dragon Collision
+    if (dragons.some(d => d.segments.some(s => s.x === head.x && s.y === head.y))) {
+        gameOver();
+        return;
+    }
+
     snake.unshift(head);
 
     // Eat Food
@@ -177,9 +279,26 @@ function update() {
         scoreElement.textContent = score.toString().padStart(3, '0');
         playSound('eat');
         createExplosion(food.x, food.y);
+
+        // Spawn Dragon every 50 points
+        if (score % 50 === 0) {
+            dragons.push(new Dragon());
+            playSound('dragon_spawn');
+            // Flash screen or something?
+        }
+
         placeFood();
     } else {
         snake.pop();
+    }
+
+    // Update Dragons
+    dragons.forEach(d => d.update());
+
+    // Check Dragon Collision after they move (head-to-head collision)
+    if (dragons.some(d => d.segments.some(s => s.x === head.x && s.y === head.y))) {
+        gameOver();
+        return;
     }
 }
 
@@ -197,7 +316,7 @@ function draw() {
     // Draw Snake
     snake.forEach((segment, index) => {
         ctx.fillStyle = index === 0 ? COLOR_SNAKE_HEAD : COLOR_SNAKE_BODY;
-        
+
         // Glow effect for head
         if (index === 0) {
             ctx.shadowBlur = 15;
@@ -207,26 +326,29 @@ function draw() {
         }
 
         ctx.fillRect(
-            segment.x * TILE_SIZE + 1, 
-            segment.y * TILE_SIZE + 1, 
-            TILE_SIZE - 2, 
+            segment.x * TILE_SIZE + 1,
+            segment.y * TILE_SIZE + 1,
+            TILE_SIZE - 2,
             TILE_SIZE - 2
         );
-        
+
         ctx.shadowBlur = 0; // Reset shadow
     });
+
+    // Draw Dragons
+    dragons.forEach(d => d.draw(ctx));
 
     // Draw Food
     ctx.fillStyle = COLOR_FOOD;
     ctx.shadowBlur = 10;
     ctx.shadowColor = COLOR_FOOD;
-    
+
     // Pulsing effect
     const pulse = Math.sin(Date.now() / 200) * 2;
     ctx.fillRect(
-        food.x * TILE_SIZE + 2 - pulse/2, 
-        food.y * TILE_SIZE + 2 - pulse/2, 
-        TILE_SIZE - 4 + pulse, 
+        food.x * TILE_SIZE + 2 - pulse / 2,
+        food.y * TILE_SIZE + 2 - pulse / 2,
+        TILE_SIZE - 4 + pulse,
         TILE_SIZE - 4 + pulse
     );
     ctx.shadowBlur = 0;
@@ -243,14 +365,14 @@ function gameOver() {
     isGameRunning = false;
     clearInterval(gameLoopId);
     playSound('die');
-    
+
     overlayTitle.textContent = "SYSTEM FAILURE";
     overlayTitle.classList.remove('blink');
     overlayTitle.style.color = '#f00';
     overlayTitle.style.textShadow = '0 0 10px #f00';
-    
+
     overlayText.innerHTML = `FINAL SCORE: <span class="key-highlight">${score}</span><br><br>PRESS <span class="key-highlight">SPACE</span> TO REBOOT`;
-    
+
     overlay.classList.remove('hidden');
 }
 
